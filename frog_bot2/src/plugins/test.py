@@ -14,7 +14,7 @@ from utils.deepseek import ChatBackend
 # Test = on_regex(pattern=r"^测试$", priority=1)
 test_cmd = on_command("出列", rule=to_me())
 ds_cmd = on_command("ds", rule=to_me(),priority=10,block=True)
-chat_backend = ChatBackend(api_key="sk-a978172cfd784775bcd1a0b47a36ec34")
+chat_backend = ChatBackend(api_key="")
 
 # @Test.handle()
 # async def Test_send(bot: Bot, event: GroupMessageEvent, state: T_State):
