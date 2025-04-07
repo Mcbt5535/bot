@@ -139,3 +139,7 @@ dmypy.json
 .pytype/
 
 # End of https://www.toptal.com/developers/gitignore/api/python
+src/utils/deepseek/history
+src/utils/jmcomic1/download
+src/utils/video_download/history
+src/utils/AI_voice/data
