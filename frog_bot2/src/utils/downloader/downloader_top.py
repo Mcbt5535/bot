@@ -20,8 +20,8 @@ def download_url(url: str):
 
     magnet_link = match.group(1)
     print(f"2 {magnet_link}")
-    info_hash = match.group(2).lower()
-    print(f"3 {info_hash}")
+    # info_hash = match.group(2).lower()
+    # print(f"3 {info_hash}")
     
     # 3. 连接 qBittorrent Web API
     qb = qbittorrentapi.Client(
@@ -43,25 +43,25 @@ def download_url(url: str):
         return f"❌ 添加下载失败：{e}"
 
     # 5. 回复用户
-    # return f"✅ 已添加下载：\n{magnet_link}"
+    return f"✅ 已添加下载：\n{magnet_link}"
 
 
-    try:
-        # hashes 参数可以传单个 hash，也可以是逗号分隔的多个
-        infos = qb.torrents_info(hashes=info_hash)
-        if not infos:
-            raise ValueError("未能获取到种子信息")
-        info = infos[0]
-        folder_name = info.name               # 种子名，通常也是文件夹名
-        save_path   = info.save_path          # 完整的保存目录，不含种子名
-        full_path   = f"{save_path}/{folder_name}"
-    except Exception as e:
-        # 如果查询失败，也不影响下载，只是返回不了文件夹名
-        return f"✅ 已添加下载：{magnet_link}\n⚠️ 添加成功，但获取文件夹名时出错：{e}"
+    # try:
+    #     # hashes 参数可以传单个 hash，也可以是逗号分隔的多个
+    #     infos = qb.torrents_info(hashes=info_hash)
+    #     if not infos:
+    #         raise ValueError("未能获取到种子信息")
+    #     info = infos[0]
+    #     folder_name = info.name               # 种子名，通常也是文件夹名
+    #     save_path   = info.save_path          # 完整的保存目录，不含种子名
+    #     full_path   = f"{save_path}/{folder_name}"
+    # except Exception as e:
+    #     # 如果查询失败，也不影响下载，只是返回不了文件夹名
+    #     return f"✅ 已添加下载：{magnet_link}\n⚠️ 添加成功，但获取文件夹名时出错：{e}"
         
-    str1 = f"✅ 已添加下载：\n"
-    str1 += f"{magnet_link}\n\n"
-    str1 += f"📂 下载文件夹：\n"
-    str1 += f"{full_path}"
+    # str1 = f"✅ 已添加下载：\n"
+    # str1 += f"{magnet_link}\n\n"
+    # str1 += f"📂 下载文件夹：\n"
+    # str1 += f"{full_path}"
     
-    return str1
+    # return str1
