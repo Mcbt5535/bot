@@ -1,5 +1,3 @@
-# qbittorrent_client.py
-
 import re
 import time
 import qbittorrentapi
@@ -15,11 +13,10 @@ METADATA_INTERVAL = 1  # 轮询间隔秒数
 # 匹配磁力链接并提取 info-hash
 MAGNET_REGEX = re.compile(r"magnet:\?xt=urn:btih:([0-9A-Fa-f]+)(?:&\S*)?")
 
-
 # ─── 核心功能函数 ────────────────────────────────────────
 def connect_qb() -> qbittorrentapi.Client:
     """
-    连接并登录 qBittorrent Web API，失败时抛出 qbittorrentapi.LoginFailed。
+    连接并登录 qBittorrent Web API，失败时抛出 qbittorrentapi.LoginFailed 异常。
     """
     client = qbittorrentapi.Client(
         host=QB_HOST, port=QB_PORT, username=QB_USERNAME, password=QB_PASSWORD
@@ -27,13 +24,12 @@ def connect_qb() -> qbittorrentapi.Client:
     client.auth_log_in()
     return client
 
-
-def add_magnet(client: qbittorrentapi.Client, magnet_link: str):
+def add_magnet(client: qbittorrentapi.Client, magnet_link: str, download_folder: str):
     """
-    向 qBittorrent 添加一个磁力下载任务。
+    向 qBittorrent 添加一个磁力下载任务，并指定保存路径。
     """
-    client.torrents_add(urls=magnet_link)
-
+    # 这里通过参数 savepath 指定下载任务的文件夹（路径需服务器已有或有权限创建）
+    client.torrents_add(urls=magnet_link, savepath=download_folder)
 
 def get_torrent_info(client: qbittorrentapi.Client, info_hash: str):
     """
@@ -41,7 +37,6 @@ def get_torrent_info(client: qbittorrentapi.Client, info_hash: str):
     """
     infos = client.torrents_info(hashes=info_hash)
     return infos[0] if infos else None
-
 
 def wait_for_metadata(client: qbittorrentapi.Client, info_hash: str):
     """
@@ -56,11 +51,11 @@ def wait_for_metadata(client: qbittorrentapi.Client, info_hash: str):
         time.sleep(METADATA_INTERVAL)
     return None
 
-
 # ─── 对外接口 ───────────────────────────────────────────
-def download_url(url: str) -> str:
+def download_url(url: str, download_folder: str) -> str:
     """
-    接收一条包含磁力链接的字符串，添加下载并返回结果字符串。
+    接收一条包含磁力链接的字符串和指定的下载文件夹名，
+    添加下载任务并返回操作结果描述字符串。
     """
     # 1. 提取 info-hash
     m = MAGNET_REGEX.search(url)
@@ -73,15 +68,15 @@ def download_url(url: str) -> str:
     try:
         qb = connect_qb()
     except qbittorrentapi.LoginFailed as e:
-        return f"❌ 登录 qBittorrent 失败：{e}"
+        return f" 登录 qBittorrent 失败：{e}"
 
-    # 3. 添加下载任务
+    # 3. 添加下载任务，并指定保存路径
     try:
-        add_magnet(qb, magnet_link)
+        add_magnet(qb, magnet_link, download_folder)
     except Exception as e:
         return f"❌ 添加下载失败：{e}"
 
-    # 4. 等待元数据完成，获取真实种子名和路径
+    # 4. 等待元数据完成，获取真实种子名和保存路径
     info = wait_for_metadata(qb, info_hash)
     if not info:
         return (
@@ -89,11 +84,11 @@ def download_url(url: str) -> str:
             "⚠️ 元数据下载超时，无法获取真实文件夹名"
         )
 
-    full_path = f"{info.save_path}/{info.name}"
+    full_path = f"{download_folder}/{info.name}"
     return f"✅ 已添加下载：\n{magnet_link}\n\n" f"📂 下载文件夹：\n{full_path}"
-
 
 # ─── 示例调用 ───────────────────────────────────────────
 if __name__ == "__main__":
     test_link = "magnet:?xt=urn:btih:ABCDE12345..."
-    print(download_url(test_link))
+    # 示例中指定的下载文件夹名为 "my_downloads"
+    print(download_url(test_link, "my_downloads"))

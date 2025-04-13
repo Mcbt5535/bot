@@ -148,16 +148,47 @@ async def handle_tb(event: MessageEvent, args: Message = CommandArg()):
 #     file_msg = MessageSegment.record(file="file://" + voice_path)
 #     await voice_cmd.finish(Message(file_msg))
 
+# kkp_cmd = on_command("kkp", rule=to_me(), priority=10, block=True)
+# @kkp_cmd.handle()
+# async def handle_kkp(event: MessageEvent, args: Message = CommandArg()):
+#     url = args.extract_plain_text().strip()
+    
+#     if not url:
+#         await kkp_cmd.finish("请输入下载链接")
+#     try:
+#         msg = download_url(url)
+#         await kkp_cmd.finish(msg)
+#     except Exception as e:
+#         pass
+#     # script_path = os.path.dirname(os.path.abspath(__file__))
+
 kkp_cmd = on_command("kkp", rule=to_me(), priority=10, block=True)
 @kkp_cmd.handle()
 async def handle_kkp(event: MessageEvent, args: Message = CommandArg()):
-    url = args.extract_plain_text().strip()
+    text = args.extract_plain_text().strip()
     
-    if not url:
-        await kkp_cmd.finish("请输入下载链接")
+    if not text:
+        await kkp_cmd.finish("请输入下载链接，格式如：/kkp f=文件夹名 magnet:?xt=...")
+
+    # 默认文件夹路径（可修改成你想要的默认值）
+    default_folder = "/downloads"
+
+    # 提取 f=xxx 和 magnet 链接
+    folder = default_folder
+    magnet = None
+
+    for part in text.split():
+        if part.startswith("f="):
+            folder = part[2:]
+        elif part.startswith("magnet:?xt=urn:btih:"):
+            magnet = part
+
+    if not magnet:
+        await kkp_cmd.finish("未检测到磁力链接，请输入正确格式")
+
     try:
-        msg = download_url(url)
+        msg = download_url(magnet, folder)
         await kkp_cmd.finish(msg)
     except Exception as e:
         pass
-    # script_path = os.path.dirname(os.path.abspath(__file__))
+        # await kkp_cmd.finish(f"发生错误：{str(e)}")

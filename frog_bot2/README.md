@@ -11,15 +11,3 @@
 
 See [Docs](https://nonebot.dev/)
 
-log
-todo 
-    ai_voice
-    anime_download
-    chat -> deepseek -> api/otherapps
-
-v1.0.0
-    - /ds 消息：与机器人对话
-    - /clear：清空对话记录
-    - /jm id：下载指定的漫画,密码为id
-    - /kkp: 下载磁力连接
-    - /tb: 下载贴吧视频连接(部分实现)
