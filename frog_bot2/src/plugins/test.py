@@ -19,7 +19,7 @@ from utils.AI_voice.AI_voice import say
 from utils.downloader.downloader_top import download_url
 import datetime
 
-chat_backend = ChatBackend(api_key="sk-a978172cfd784775bcd1a0b47a36ec34")
+chat_backend = ChatBackend(api_key="")
 
 
 def get_conv_id(event: MessageEvent):
@@ -192,3 +192,4 @@ async def handle_kkp(event: MessageEvent, args: Message = CommandArg()):
     except Exception as e:
         pass
         # await kkp_cmd.finish(f"发生错误：{str(e)}")
+
