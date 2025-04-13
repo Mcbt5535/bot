@@ -1,67 +1,99 @@
-# bot/plugins/qbittorrent_magnet.py
+# qbittorrent_client.py
 
 import re
+import time
 import qbittorrentapi
 
+# ─── 配置区 ─────────────────────────────────────────────
+QB_HOST = "http://192.168.122.1"
+QB_PORT = 8888
+QB_USERNAME = "admin"
+QB_PASSWORD = "k2B38GneY"
+METADATA_TIMEOUT = 60  # 最长等待元数据下载秒数
+METADATA_INTERVAL = 1  # 轮询间隔秒数
 
-# 1. 匹配磁力链接的正则
-MAGNET_REGEX = r"(magnet:\?xt=urn:btih:[a-zA-Z0-9]+[^\s]*)"
+# 匹配磁力链接并提取 info-hash
+MAGNET_REGEX = re.compile(r"magnet:\?xt=urn:btih:([0-9A-Fa-f]+)(?:&\S*)?")
 
 
-# 2. 下载函数
-def download_url(url: str):
+# ─── 核心功能函数 ────────────────────────────────────────
+def connect_qb() -> qbittorrentapi.Client:
     """
-    下载磁力链接并添加到 qBittorrent 下载任务。
+    连接并登录 qBittorrent Web API，失败时抛出 qbittorrentapi.LoginFailed。
     """
-    match = re.search(MAGNET_REGEX, url)
-    print(f"1 {match}")
-    if not match:
-        return f"❌ 未检测到磁力链接"  # 理论上不会进来
-
-    magnet_link = match.group(1)
-    print(f"2 {magnet_link}")
-    # info_hash = match.group(2).lower()
-    # print(f"3 {info_hash}")
-    
-    # 3. 连接 qBittorrent Web API
-    qb = qbittorrentapi.Client(
-        host="http://192.168.122.1",  # 注意加 http://
-        port=8888,
-        username="admin",
-        password="k2B38GneY",
+    client = qbittorrentapi.Client(
+        host=QB_HOST, port=QB_PORT, username=QB_USERNAME, password=QB_PASSWORD
     )
+    client.auth_log_in()
+    return client
 
+
+def add_magnet(client: qbittorrentapi.Client, magnet_link: str):
+    """
+    向 qBittorrent 添加一个磁力下载任务。
+    """
+    client.torrents_add(urls=magnet_link)
+
+
+def get_torrent_info(client: qbittorrentapi.Client, info_hash: str):
+    """
+    查询单个种子的信息，找不到返回 None。
+    """
+    infos = client.torrents_info(hashes=info_hash)
+    return infos[0] if infos else None
+
+
+def wait_for_metadata(client: qbittorrentapi.Client, info_hash: str):
+    """
+    轮询等待种子元数据下载完成（即 info.name 不再等于 info_hash）。
+    超时返回 None。
+    """
+    deadline = time.time() + METADATA_TIMEOUT
+    while time.time() < deadline:
+        info = get_torrent_info(client, info_hash)
+        if info and info.name.lower() != info_hash.lower():
+            return info
+        time.sleep(METADATA_INTERVAL)
+    return None
+
+
+# ─── 对外接口 ───────────────────────────────────────────
+def download_url(url: str) -> str:
+    """
+    接收一条包含磁力链接的字符串，添加下载并返回结果字符串。
+    """
+    # 1. 提取 info-hash
+    m = MAGNET_REGEX.search(url)
+    if not m:
+        return "❌ 未检测到磁力链接"
+    info_hash = m.group(1).lower()
+    magnet_link = f"magnet:?xt=urn:btih:{info_hash}"
+
+    # 2. 登录 qBittorrent
     try:
-        qb.auth_log_in()  # 登录
+        qb = connect_qb()
     except qbittorrentapi.LoginFailed as e:
-        return f"❌ 无法登录 qBittorrent：{e}"
+        return f"❌ 登录 qBittorrent 失败：{e}"
 
-    # 4. 添加任务
+    # 3. 添加下载任务
     try:
-        qb.torrents_add(urls=magnet_link)
+        add_magnet(qb, magnet_link)
     except Exception as e:
         return f"❌ 添加下载失败：{e}"
 
-    # 5. 回复用户
-    return f"✅ 已添加下载：\n{magnet_link}"
+    # 4. 等待元数据完成，获取真实种子名和路径
+    info = wait_for_metadata(qb, info_hash)
+    if not info:
+        return (
+            f"✅ 已添加下载：\n{magnet_link}\n\n"
+            "⚠️ 元数据下载超时，无法获取真实文件夹名"
+        )
+
+    full_path = f"{info.save_path}/{info.name}"
+    return f"✅ 已添加下载：\n{magnet_link}\n\n" f"📂 下载文件夹：\n{full_path}"
 
 
-    # try:
-    #     # hashes 参数可以传单个 hash，也可以是逗号分隔的多个
-    #     infos = qb.torrents_info(hashes=info_hash)
-    #     if not infos:
-    #         raise ValueError("未能获取到种子信息")
-    #     info = infos[0]
-    #     folder_name = info.name               # 种子名，通常也是文件夹名
-    #     save_path   = info.save_path          # 完整的保存目录，不含种子名
-    #     full_path   = f"{save_path}/{folder_name}"
-    # except Exception as e:
-    #     # 如果查询失败，也不影响下载，只是返回不了文件夹名
-    #     return f"✅ 已添加下载：{magnet_link}\n⚠️ 添加成功，但获取文件夹名时出错：{e}"
-        
-    # str1 = f"✅ 已添加下载：\n"
-    # str1 += f"{magnet_link}\n\n"
-    # str1 += f"📂 下载文件夹：\n"
-    # str1 += f"{full_path}"
-    
-    # return str1
+# ─── 示例调用 ───────────────────────────────────────────
+if __name__ == "__main__":
+    test_link = "magnet:?xt=urn:btih:ABCDE12345..."
+    print(download_url(test_link))
